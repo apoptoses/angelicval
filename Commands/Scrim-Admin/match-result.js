@@ -103,6 +103,7 @@ function getAllPlayersStats(matchDetails) {
         const points = (won ? 5 : 0) + (isMatchMVP ? 3 : 0) + (isTeamMVP ? 1 : 0);
 
         return {
+            puuid: player.puuid,
             name: player.name,
             tag: player.tag,
             team: player.team,
@@ -210,6 +211,7 @@ module.exports = {
     
             for (const player of allPlayersStats.players) {
                 await updatePlayerStats(player.name, player.tag, {
+                    puuid: player.puuid,
                     kills: player.kills,
                     deaths: player.deaths,
                     assists: player.assists,

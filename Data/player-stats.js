@@ -50,32 +50,61 @@ async function updatePlayerStats(name, tag, stats) {
         let player = await PlayerStats.findOne({ name, tag });
 
         if (!player) {
-            player = await PlayerStats.findOne({ puuid: stats.puuid });
+            if (stats.puuid) {
+                player = await PlayerStats.findOne({ puuid: stats.puuid });
 
-            if (player) {
-                console.log(`Potential duplicate found for ${name}#${tag}. Please use /merge-player-records to merge with ${player.name}#${player.tag}`);
+                if (player) {
+                    console.log(`Potential duplicate found for ${name}#${tag}. Please use /merge-player-records to merge with ${player.name}#${player.tag}`);
+                    return;
+                }
             }
+
+            if (!stats.puuid) {
+                console.log(`No puuid provided for new player ${name}#${tag}. Generating a temporary one.`);
+                stats.puuid = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            }
+
+            player = new PlayerStats({
+                puuid: stats.puuid,
+                name,
+                tag,
+                kills: 0,
+                deaths: 0,
+                assists: 0,
+                wins: 0,
+                losses: 0,
+                totalHeadshots: 0,
+                totalBodyshots: 0,
+                totalLegshots: 0,
+                matchMVPs: 0,
+                teamMVPs: 0,
+                processedMatches: [],
+                matchData: []
+            });
+        } else if (!player.puuid) {
+            // If an existing player doesn't have a puuid, generate one
+            player.puuid = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         }
 
-        if (player) {
-            if (player.name !== name || player.tag !== tag) {
-                player.name = name;
-                player.tag = tag;
-            }
+        if (player.name !== name || player.tag !== tag) {
+            player.name = name;
+            player.tag = tag;
+        }
 
-            player.kills += stats.kills;
-            player.deaths += stats.deaths;
-            player.assists += stats.assists;
-            player.totalHeadshots += stats.headshots;
-            player.totalBodyshots += stats.bodyshots;
-            player.totalLegshots += stats.legshots;
+        // Rest of the function remains the same
+        player.kills += stats.kills;
+        player.deaths += stats.deaths;
+        player.assists += stats.assists;
+        player.totalHeadshots += stats.headshots;
+        player.totalBodyshots += stats.bodyshots;
+        player.totalLegshots += stats.legshots;
 
-            stats.won ? player.wins++ : player.losses++;
+        stats.won ? player.wins++ : player.losses++;
 
-            if (stats.isMatchMVP) player.matchMVPs++;
-            if (stats.isTeamMVP) player.teamMVPs++;
+        if (stats.isMatchMVP) player.matchMVPs++;
+        if (stats.isTeamMVP) player.teamMVPs++;
 
-            if (player.processedMatches.includes(stats.matchId)) return;
+        if (!player.processedMatches.includes(stats.matchId)) {
             player.matchData.push({
                 matchId: stats.matchId,
                 kills: stats.kills,
@@ -91,40 +120,11 @@ async function updatePlayerStats(name, tag, stats) {
                 acs: stats.acs
             });
 
-            player.lastUpdated = new Date();
-            await player.save();
-        } else {
-            await new PlayerStats({
-                puuid: stats.puuid,
-                name,
-                tag,
-                kills: stats.kills,
-                deaths: stats.deaths,
-                assists: stats.assists,
-                wins: stats.won ? 1 : 0,
-                losses: stats.won ? 0 : 1,
-                totalHeadshots: stats.headshots,
-                totalBodyshots: stats.bodyshots,
-                totalLegshots: stats.legshots,
-                matchMVPs: stats.isMatchMVP ? 1 : 0,
-                teamMVPs: stats.isTeamMVP ? 1 : 0,
-                processedMatches: [stats.matchId],
-                matchData: [{
-                    matchId: stats.matchId,
-                    kills: stats.kills,
-                    deaths: stats.deaths,
-                    assists: stats.assists,
-                    won: stats.won,
-                    headshots: stats.headshots,
-                    bodyshots: stats.bodyshots,
-                    legshots: stats.legshots,
-                    isMatchMVP: stats.isMatchMVP,
-                    isTeamMVP: stats.isTeamMVP,
-                    agent: stats.agent,
-                    acs: stats.acs
-                }]
-            }).save();
+            player.processedMatches.push(stats.matchId);
         }
+
+        player.lastUpdated = new Date();
+        await player.save();
     } catch (error) {
         console.error(`Error updating ${name}#${tag}:`, error);
         throw error;
