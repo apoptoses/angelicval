@@ -9,3 +9,5 @@ Step: 3 We will use this to verify their account ownership to link their riot ac
 
 Step: 4 /player-stats command shall show the players stats from the custom scrims we hosted, as long as they give permission.
 
+Youtube Video Demonstration of uses for commands that will utilze Riot Games Api:
+https://youtu.be/8T0xXi6ifcw
